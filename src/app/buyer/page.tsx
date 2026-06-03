@@ -19,7 +19,7 @@ export default async function BuyerDashboardPage() {
     profile = await prisma.profile.create({
       data: {
         userId: session.id,
-        name: '', // Left empty to prompt user to fill
+        name: '',
         companyName: `${userPrefix.toUpperCase()} Ltd`,
         contactNumber: '',
         pincode: '',
@@ -32,6 +32,12 @@ export default async function BuyerDashboardPage() {
       },
     });
   }
+
+  // Fetch live verification status directly from the database
+  const freshUser = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { isVerified: true },
+  });
 
   // Fetch metrics for the Buyer's Business Overview
   const totalOrders = await prisma.order.findMany({
@@ -53,7 +59,7 @@ export default async function BuyerDashboardPage() {
   return (
     <BuyerDashboardView
       userEmail={session.email}
-      isVerified={session.isVerified}
+      isVerified={freshUser?.isVerified ?? false} // Pass live DB status
       initialProfile={profile}
       metrics={{
         activeOrders: activeOrdersCount,

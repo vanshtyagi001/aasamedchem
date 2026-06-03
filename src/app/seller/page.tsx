@@ -9,7 +9,7 @@ export default async function SellerDashboardPage() {
     redirect('/login');
   }
 
-  // Fetch the corporate profile for this specific user ID
+  // Fetch corporate profile
   let profile = await prisma.profile.findUnique({
     where: { userId: session.id },
   });
@@ -20,8 +20,8 @@ export default async function SellerDashboardPage() {
     profile = await prisma.profile.create({
       data: {
         userId: session.id,
-        name: '', // Empty: forces user to fill
-        companyName: `${userPrefix.toUpperCase()} Enterprise`, // Soft default
+        name: '',
+        companyName: `${userPrefix.toUpperCase()} Enterprise`,
         contactNumber: '',
         pincode: '',
         district: '',
@@ -34,6 +34,12 @@ export default async function SellerDashboardPage() {
       },
     });
   }
+
+  // Fetch live verification status directly from the User record in database
+  const freshUser = await prisma.user.findUnique({
+    where: { id: session.id },
+    select: { isVerified: true },
+  });
 
   // Fetch live metrics for Business Overview
   const totalItemsCount = await prisma.product.count({
@@ -52,7 +58,7 @@ export default async function SellerDashboardPage() {
   return (
     <SellerDashboardView
       userEmail={session.email}
-      isVerified={session.isVerified}
+      isVerified={freshUser?.isVerified ?? false} // Pass live DB status
       initialProfile={profile}
       metrics={{
         totalItems: totalItemsCount,

@@ -47,12 +47,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Only buyers can request quotations' }, { status: 401 });
   }
 
-  if (!session.isVerified) {
-    return NextResponse.json(
-      { error: 'Your corporate profile is not verified yet. Purchase permissions are locked.' },
-      { status: 403 }
-    );
-  }
+  const freshUser = await prisma.user.findUnique({
+  where: { id: session.id },
+  select: { isVerified: true },
+});
+
+if (!freshUser || !freshUser.isVerified) {
+  return NextResponse.json(
+    { error: 'Your corporate profile is not verified yet. Purchase permissions are locked.' },
+    { status: 403 }
+  );
+}
 
   try {
     const { productId, quantity, orderedUnit } = await req.json();
