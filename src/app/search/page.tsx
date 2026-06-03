@@ -11,7 +11,7 @@ import {
   SlidersHorizontal,
   RotateCcw
 } from 'lucide-react';
-import { getUnitPriceForUnit, calculateTotalPrice } from '@/lib/conversions';
+import { getUnitPriceForUnit, calculateTotalPrice, convertFromBaseQty } from '@/lib/conversions';
 
 export default function SearchPage() {
   const [products, setProducts] = useState<any[]>([]);
@@ -32,7 +32,6 @@ export default function SearchPage() {
   const availableCertifications = ['GMP', 'CEP', 'WC', 'FDA', 'COA', 'ISO9001', 'WHO_GMP'];
 
   useEffect(() => {
-    // Retrieve active logged-in session profile
     fetch('/api/auth/me')
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => setUser(d?.user));
@@ -50,7 +49,6 @@ export default function SearchPage() {
     setLoading(false);
   };
 
-  // Toggle dynamic certifications in left sidebar filter
   const handleToggleCert = (cert: string) => {
     if (selectedCerts.includes(cert)) {
       setSelectedCerts(selectedCerts.filter((c) => c !== cert));
@@ -59,7 +57,6 @@ export default function SearchPage() {
     }
   };
 
-  // Reset all search and filter fields
   const handleResetFilters = () => {
     setSearchTerm('');
     setSelectedCategory('');
@@ -67,7 +64,6 @@ export default function SearchPage() {
     setSelectedCerts([]);
   };
 
-  // Filter products locally on client side for responsive instant-update UX
   const filteredProducts = products.filter((product) => {
     const matchesSearch = 
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -112,7 +108,7 @@ export default function SearchPage() {
 
   return (
     <div className="space-y-8 py-4">
-      {/* Title & Subtitle Section */}
+      {/* Header */}
       <div className="border-b border-gray-200 pb-4">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
           <SlidersHorizontal className="w-5 h-5 text-indigo-600" /> B2B Sourcing Directory
@@ -120,7 +116,7 @@ export default function SearchPage() {
         <p className="text-sm text-gray-500">Filter chemical assets by CAS registries, purity standards, and global compliance certifications</p>
       </div>
 
-      {/* 1. PROMINENT TOP SEARCH CONSOLE BAR */}
+      {/* Prominent Search Bar */}
       <section className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
         <div className="relative">
           <SearchIcon className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
@@ -128,16 +124,16 @@ export default function SearchPage() {
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-12 pr-4 w-full rounded-xl border border-gray-300 py-3.5 text-sm text-gray-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm"
+            className="pl-12 pr-4 w-full rounded-xl border border-gray-300 py-3.5 text-sm text-gray-955 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm"
             placeholder="Search active chemicals, pharmaceutical ingredients, or CAS registry numbers (e.g., 103-90-2)..."
           />
         </div>
       </section>
 
-      {/* Main Content Area: Sidebar on left, Results on right */}
+      {/* Main Grid */}
       <div className="flex flex-col lg:flex-row gap-8">
         
-        {/* 2. LEFT SIDEBAR FILTERS */}
+        {/* Left Filters */}
         <aside className="w-full lg:w-64 flex-shrink-0 bg-white border border-gray-200 rounded-xl p-5 shadow-sm h-fit space-y-6 sticky top-20">
           <div className="flex justify-between items-center pb-3 border-b border-gray-100">
             <span className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
@@ -146,13 +142,11 @@ export default function SearchPage() {
             <button 
               onClick={handleResetFilters}
               className="text-xs text-indigo-600 hover:text-indigo-500 font-semibold flex items-center gap-1"
-              title="Reset Filters"
             >
               <RotateCcw className="w-3 h-3" /> Reset
             </button>
           </div>
 
-          {/* Trade Category Radios */}
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase text-gray-400">Category</label>
             <div className="space-y-1.5">
@@ -171,7 +165,6 @@ export default function SearchPage() {
             </div>
           </div>
 
-          {/* Purity Standard Radios */}
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase text-gray-400">Min Purity Threshold</label>
             <div className="space-y-1.5">
@@ -190,7 +183,6 @@ export default function SearchPage() {
             </div>
           </div>
 
-          {/* Regulatory Certifications Checklist */}
           <div className="space-y-2">
             <label className="block text-xs font-bold uppercase text-gray-400">Required Standards</label>
             <div className="space-y-1.5">
@@ -209,7 +201,7 @@ export default function SearchPage() {
           </div>
         </aside>
 
-        {/* 3. RIGHT COLUMN: DYNAMIC RESULTS FEED */}
+        {/* Right Feed */}
         <section className="flex-1 space-y-6">
           <div className="flex justify-between items-center bg-white border border-gray-200 px-4 py-3 rounded-xl shadow-sm text-sm">
             <span className="text-gray-500">
@@ -232,6 +224,10 @@ export default function SearchPage() {
                 const enteredQty = quoteQtys[product.id] || 0;
                 const displayPrice = getUnitPriceForUnit(Number(product.pricePerBaseUnit), selectedUnit as any);
                 const totalEstimated = calculateTotalPrice(enteredQty, selectedUnit as any, Number(product.pricePerBaseUnit));
+
+                // DYNAMICALLY CONVERT MOQ & AVAILABLE STOCK
+                const displayMinQty = convertFromBaseQty(Number(product.minOrderQty), selectedUnit as any);
+                const displayAvailableQty = convertFromBaseQty(Number(product.availableQty), selectedUnit as any);
 
                 return (
                   <div key={product.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow transition flex flex-col justify-between">
@@ -258,6 +254,18 @@ export default function SearchPage() {
                           ))}
                         </div>
                       )}
+
+                      {/* MOQ AND STOCK INDICATORS (Dynamic scaling based on unit selected) */}
+                      <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-500 bg-slate-50 p-2.5 rounded-lg mb-4 border border-slate-100 font-medium">
+                        <div>
+                          <span className="text-gray-400 block uppercase tracking-wider text-[9px] font-bold">Min. Order (MOQ)</span>
+                          <span className="text-gray-800 font-semibold">{displayMinQty.toLocaleString()} {selectedUnit}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block uppercase tracking-wider text-[9px] font-bold">Available Stock</span>
+                          <span className="text-gray-800 font-semibold">{displayAvailableQty.toLocaleString()} {selectedUnit}</span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Form converter block */}
@@ -272,7 +280,7 @@ export default function SearchPage() {
                         <select
                           value={selectedUnit}
                           onChange={(e) => setQuoteUnits({ ...quoteUnits, [product.id]: e.target.value })}
-                          className="text-xs font-semibold border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                          className="text-xs font-semibold border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none bg-white"
                         >
                           <option value="kg">kilograms (kg)</option>
                           <option value="g">grams (g)</option>
@@ -301,7 +309,7 @@ export default function SearchPage() {
                           </button>
                         </div>
 
-                        {/* Interactive notices */}
+                        {/* Notices */}
                         {!user && (
                           <p className="text-[10px] text-gray-400 text-center">
                             Please <Link href="/login" className="text-indigo-600 font-bold underline">log in as Buyer</Link> to initiate sourcing.

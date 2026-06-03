@@ -13,7 +13,7 @@ import {
   Database, 
   Truck 
 } from 'lucide-react';
-import { getUnitPriceForUnit, calculateTotalPrice } from '@/lib/conversions';
+import { getUnitPriceForUnit, calculateTotalPrice, convertFromBaseQty } from '@/lib/conversions';
 
 export default function Home() {
   const [products, setProducts] = useState<any[]>([]);
@@ -27,7 +27,6 @@ export default function Home() {
   const [notifications, setNotifications] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Fetch logged-in user profile details
     fetch('/api/auth/me')
       .then((r) => r.ok ? r.json() : null)
       .then((d) => setUser(d?.user));
@@ -61,7 +60,7 @@ export default function Home() {
     const data = await res.json();
     if (res.ok) {
       setNotifications({ ...notifications, [productId]: 'Quotation request sent! Track under My Orders.' });
-      setQuoteQtys({ ...quoteQtys, [productId]: 0 }); // reset form
+      setQuoteQtys({ ...quoteQtys, [productId]: 0 });
     } else {
       alert(data.error || 'Failed to request quote. Please check MOQ requirements.');
     }
@@ -70,7 +69,7 @@ export default function Home() {
   return (
     <div className="space-y-12 py-4">
       
-      {/* 1. B2B HERO INTRODUCTION PANEL */}
+      {/* Hero Section */}
       <section className="bg-white border border-gray-200 rounded-2xl p-8 lg:p-12 shadow-sm flex flex-col lg:flex-row items-center justify-between gap-8">
         <div className="max-w-2xl space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
@@ -112,7 +111,7 @@ export default function Home() {
           </div>
         </div>
         
-        {/* Quality Badges Grid */}
+        {/* Quality Badges */}
         <div className="grid grid-cols-2 gap-4 w-full lg:w-96 flex-shrink-0">
           <div className="border border-gray-100 bg-slate-50 rounded-xl p-4 text-center">
             <Database className="w-6 h-6 text-indigo-600 mx-auto mb-2" />
@@ -137,7 +136,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 2. DYNAMIC B2B DIRECTORY SEARCH CONSOLE */}
+      {/* Directory Search Console */}
       <section className="bg-white border border-gray-200 p-6 rounded-2xl shadow-sm">
         <h2 className="text-lg font-bold text-gray-900 mb-4">Marketplace Search Directory</h2>
         <div className="flex flex-col md:flex-row gap-4">
@@ -147,7 +146,7 @@ export default function Home() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 w-full rounded-lg border border-gray-300 py-2.5 text-sm text-gray-950 focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 outline-none"
+              className="pl-9 w-full rounded-lg border border-gray-300 py-2.5 text-sm text-gray-955 focus:border-indigo-500 focus:ring-indigo-500 focus:ring-1 outline-none"
               placeholder="Enter active chemical name, ingredient, or CAS number..."
             />
           </div>
@@ -165,7 +164,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 3. DYNAMIC PRODUCTS LIST FEED */}
+      {/* Product Listings Grid */}
       <section className="space-y-6">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-bold text-gray-900">Current Chemical Listings</h2>
@@ -187,6 +186,10 @@ export default function Home() {
               const displayPrice = getUnitPriceForUnit(Number(product.pricePerBaseUnit), selectedUnit as any);
               const totalEstimated = calculateTotalPrice(enteredQty, selectedUnit as any, Number(product.pricePerBaseUnit));
 
+              // DYNAMICALLY CONVERT MOQ & AVAILABLE STOCK
+              const displayMinQty = convertFromBaseQty(Number(product.minOrderQty), selectedUnit as any);
+              const displayAvailableQty = convertFromBaseQty(Number(product.availableQty), selectedUnit as any);
+
               return (
                 <div key={product.id} className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow transition flex flex-col justify-between">
                   <div>
@@ -204,7 +207,7 @@ export default function Home() {
 
                     {/* Certifications Row */}
                     {product.certifications.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-6">
+                      <div className="flex flex-wrap gap-1.5 mb-4">
                         {product.certifications.map((tag: string) => (
                           <span key={tag} className="text-[9px] font-extrabold bg-emerald-50 border border-emerald-100 text-emerald-800 px-2 py-0.5 rounded uppercase">
                             {tag}
@@ -212,6 +215,18 @@ export default function Home() {
                         ))}
                       </div>
                     )}
+
+                    {/* MOQ AND STOCK INDICATORS (Dynamic scaling based on unit selected) */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-500 bg-slate-50 p-2.5 rounded-lg mb-6 border border-slate-100 font-medium">
+                      <div>
+                        <span className="text-gray-400 block uppercase tracking-wider text-[9px] font-bold">Min. Order (MOQ)</span>
+                        <span className="text-gray-800 font-semibold">{displayMinQty.toLocaleString()} {selectedUnit}</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block uppercase tracking-wider text-[9px] font-bold">Available Stock</span>
+                        <span className="text-gray-800 font-semibold">{displayAvailableQty.toLocaleString()} {selectedUnit}</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Form Console Block */}
@@ -226,7 +241,7 @@ export default function Home() {
                       <select
                         value={selectedUnit}
                         onChange={(e) => setQuoteUnits({ ...quoteUnits, [product.id]: e.target.value })}
-                        className="text-xs font-semibold border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none"
+                        className="text-xs font-semibold border border-gray-300 rounded-lg px-2.5 py-1.5 focus:outline-none bg-white"
                       >
                         <option value="kg">kilograms (kg)</option>
                         <option value="g">grams (g)</option>
@@ -255,7 +270,7 @@ export default function Home() {
                         </button>
                       </div>
 
-                      {/* Info and Banner Prompts */}
+                      {/* Info & Notices */}
                       {!user && (
                         <p className="text-[10px] text-gray-400 text-center">
                           Please <Link href="/login" className="text-indigo-600 font-bold underline">log in as Buyer</Link> to initiate sourcing.
