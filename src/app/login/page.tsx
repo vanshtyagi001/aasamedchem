@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function Login() {
+// 1. SUB-COMPONENT CONTAINING SEARCHPARAMS LOGIC
+function LoginContent() {
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
   const [email, setEmail] = useState('');
@@ -11,13 +12,12 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // 1. AUTO-REDIRECT IF ALREADY LOGGED IN
+  // Auto-redirect if already logged in
   useEffect(() => {
     fetch('/api/auth/me')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.user) {
-          // If session is active, bypass the login screen instantly
           if (data.user.role === 'ADMIN') {
             window.location.href = '/admin';
           } else if (data.user.role === 'SELLER') {
@@ -26,13 +26,12 @@ export default function Login() {
             window.location.href = '/buyer';
           }
         } else {
-          setLoading(false); // Stop loading skeleton and show form
+          setLoading(false);
         }
       })
       .catch(() => setLoading(false));
   }, []);
 
-  // 2. FORM SUBMISSION WORKFLOW
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -48,7 +47,6 @@ export default function Login() {
       if (!res.ok) {
         setError(data.error || 'Invalid credentials');
       } else {
-        // Direct assignment eliminates client-side routing race conditions
         if (data.user.role === 'ADMIN') {
           window.location.href = '/admin';
         } else if (data.user.role === 'SELLER') {
@@ -136,5 +134,20 @@ export default function Login() {
         </form>
       </div>
     </div>
+  );
+}
+
+// 2. EXPORTED ENTRY POINT PAGE WRAPPED IN REACT SUSPENSE
+export default function Login() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-[75vh] items-center justify-center">
+          <p className="text-sm font-semibold text-gray-400">Loading page resources...</p>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
