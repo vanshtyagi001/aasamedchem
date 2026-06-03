@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { convertToBaseQty } from '@/lib/conversions';
-import { Prisma } from '@/generated/client'; // Path alias points directly to src/generated/client
+import { Prisma } from '@/generated/client';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -83,5 +83,30 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: 'Product listed successfully', product });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Error publishing product' }, { status: 500 });
+  }
+}
+
+// DELETE handler to allow sellers to remove listed products
+export async function DELETE(req: Request) {
+  const session = await getSession();
+  if (!session || session.role !== 'SELLER') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { searchParams } = new URL(req.url);
+    const productId = searchParams.get('id');
+
+    if (!productId) {
+      return NextResponse.json({ error: 'Product ID required' }, { status: 400 });
+    }
+
+    await prisma.product.delete({
+      where: { id: productId, sellerId: session.id },
+    });
+
+    return NextResponse.json({ message: 'Product removed from catalog' });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || 'Failed to delete product' }, { status: 500 });
   }
 }

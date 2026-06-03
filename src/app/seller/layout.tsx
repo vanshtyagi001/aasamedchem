@@ -11,7 +11,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     { name: 'Profile', href: '/seller', icon: User },
     { name: 'Inventory', href: '/seller/inventory', icon: ClipboardList },
     { name: 'Analytics', href: '/seller/analytics', icon: BarChart3 },
-    { name: 'Order', href: '/buyer/orders', icon: ShoppingCart }, // Routing to standard order database view
+    { name: 'Order', href: '/seller/orders', icon: ShoppingCart }, // Routing to standard order database view
     { name: 'Admin Chat', href: '/seller/chat', icon: MessageSquare },
   ];
 
