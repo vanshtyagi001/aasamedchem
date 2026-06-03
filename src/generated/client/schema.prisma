@@ -1,0 +1,97 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
+
+enum Role {
+  ADMIN
+  SELLER
+  BUYER
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(BUYER)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  profile      Profile?
+  products     Product[] @relation("SellerProducts")
+  orders       Order[]   @relation("BuyerOrders")
+  sales        Order[]   @relation("SellerSales")
+}
+
+model Profile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  designation        String?
+  contactNumber      String
+  companyName        String
+  gstNumber          String?
+  licenseNumber      String?
+  establishedIn      String?
+  employees          String?
+  linkedinUrl        String?
+  pincode            String
+  district           String
+  state              String
+  country            String
+  companyAddress     String
+  companyDescription String?
+  category           String? // "Manufacturer" or "Supplier" (for Sellers)
+  photos             String[] @default([])
+  isCompleted        Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Product {
+  id               String   @id @default(uuid())
+  sellerId         String
+  seller           User     @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+  name             String
+  category         String // e.g., API, Excipient, Intermediate
+  casNumber        String
+  purity           Decimal  @db.Decimal(10, 2)
+  minOrderQty      Decimal  @db.Decimal(20, 4) // Stored in base unit (g, mL, or items)
+  availableQty     Decimal  @db.Decimal(20, 4) // Stored in base unit (g, mL, or items)
+  baseUnit         String // "g" (for weights), "mL" (for volumes), "items" (for counts)
+  pricePerBaseUnit Decimal  @db.Decimal(20, 4) // Price in INR per standard base unit
+  description      String?
+  certifications   String[] @default([])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  orders           Order[]
+}
+
+model Order {
+  id          String      @id @default(uuid())
+  buyerId     String
+  buyer       User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      User        @relation("SellerSales", fields: [sellerId], references: [id])
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity    Decimal     @db.Decimal(20, 4) // Quantity ordered, represented in base units internally
+  orderedUnit String // Unit selected during check out (kg, g, L, mL, items)
+  orderedQty  Decimal     @db.Decimal(20, 4) // The raw quantity user entered in the ordered unit
+  totalPrice  Decimal     @db.Decimal(20, 4) // Calculated price in INR
+  status      OrderStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
